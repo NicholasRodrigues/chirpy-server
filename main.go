@@ -18,10 +18,18 @@ func middlewareCors(next http.Handler) http.Handler {
 	})
 }
 
+func readinessHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusOK)
+	w.Write([]byte("OK"))
+}
+
 func createServer() *http.Server {
 	const port = "8080"
 	mux := http.NewServeMux()
+	mux.Handle("/", http.StripPrefix("/app", http.FileServer(http.Dir("./app/"))))
+	mux.HandleFunc("/healthz", readinessHandler)
 	corsMux := middlewareCors(mux)
+
 	server := &http.Server{
 		Addr:    ":" + port,
 		Handler: corsMux,
