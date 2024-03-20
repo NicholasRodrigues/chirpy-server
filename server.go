@@ -11,10 +11,13 @@ func createServer() *http.Server {
 	mux := http.NewServeMux()
 	apiConfig := apiConfig{}
 
-	mux.Handle("/app/*", apiConfig.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot)))))
-	mux.HandleFunc("/healthz", readinessHandler)
-	mux.HandleFunc("/metrics", apiConfig.metricsHandler)
-	mux.HandleFunc("/reset", apiConfig.resetHandler)
+	fsHandler := apiConfig.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot))))
+	mux.Handle("/app/*", fsHandler)
+
+	mux.HandleFunc("GET /healthz", readinessHandler)
+	mux.HandleFunc("GET /metrics", apiConfig.metricsHandler)
+	mux.HandleFunc("GET /reset", apiConfig.resetHandler)
+
 	corsMux := middlewareCors(mux)
 
 	server := &http.Server{
