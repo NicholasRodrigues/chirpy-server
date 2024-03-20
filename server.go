@@ -15,8 +15,9 @@ func createServer() *http.Server {
 	mux.Handle("/app/*", fsHandler)
 
 	mux.HandleFunc("GET /api/healthz", readinessHandler)
-	mux.HandleFunc("GET /api/metrics", apiConfig.metricsHandler)
 	mux.HandleFunc("GET /api/reset", apiConfig.resetHandler)
+
+	mux.HandleFunc("GET /admin/metrics", apiConfig.metricsHandler)
 
 	corsMux := middlewareCors(mux)
 
