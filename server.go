@@ -7,13 +7,14 @@ import (
 
 func createServer() *http.Server {
 	const port = "8080"
+	const filepathRoot = "."
 	mux := http.NewServeMux()
 	apiConfig := apiConfig{}
 
-	mux.Handle("/", apiConfig.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir("./app/")))))
+	mux.Handle("/app/*", apiConfig.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot)))))
 	mux.HandleFunc("/healthz", readinessHandler)
-	mux.Handle("/metrics", http.HandlerFunc(apiConfig.metricsHandler))
-	mux.Handle("/reset", http.HandlerFunc(apiConfig.resetHandler))
+	mux.HandleFunc("/metrics", apiConfig.metricsHandler)
+	mux.HandleFunc("/reset", apiConfig.resetHandler)
 	corsMux := middlewareCors(mux)
 
 	server := &http.Server{
