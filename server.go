@@ -16,6 +16,7 @@ func createServer() *http.Server {
 
 	mux.HandleFunc("GET /api/healthz", readinessHandler)
 	mux.HandleFunc("GET /api/reset", apiConfig.resetHandler)
+	mux.HandleFunc("POST /api/validate_chirp", apiConfig.validateChirpHandler)
 
 	mux.HandleFunc("GET /admin/metrics", apiConfig.metricsHandler)
 
