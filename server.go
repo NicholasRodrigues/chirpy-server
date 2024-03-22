@@ -2,16 +2,23 @@ package main
 
 import (
 	"fmt"
+	"github.com/NicholasRodrigues/chirpy-server/internal/database"
+	"log"
 	"net/http"
 )
 
 func createServer() *http.Server {
 	const port = "8080"
 	const filepathRoot = "."
+	db, err := database.NewDB("database.json")
+	if err != nil {
+		log.Fatal(err)
+	}
+
 	mux := http.NewServeMux()
 	apiConfig := apiConfig{
 		fileserverHits: 0,
-		dbPath:         "chirps.json",
+		DB:             db,
 	}
 
 	fsHandler := apiConfig.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot))))
@@ -22,8 +29,8 @@ func createServer() *http.Server {
 	mux.HandleFunc("POST /api/validate_chirp", apiConfig.validateChirpHandler)
 	mux.HandleFunc("POST /api/chirps", apiConfig.insertChirpHandler)
 	mux.HandleFunc("GET /api/chirps", apiConfig.getChirpsHandler)
-	mux.HandleFunc("/api/chirps/{id}", apiConfig.getChirpHandler)
-	mux.HandleFunc("GET /api/users", apiConfig.getUsersHandler)
+	mux.HandleFunc("GET /api/chirps/{chirpID}", apiConfig.getChirpHandler)
+	mux.HandleFunc("GET /api/users/{userID}", apiConfig.getUserHandler)
 	mux.HandleFunc("POST /api/users", apiConfig.insertUserHandler)
 
 	mux.HandleFunc("GET /admin/metrics", apiConfig.metricsHandler)

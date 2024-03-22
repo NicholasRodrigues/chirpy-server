@@ -2,9 +2,12 @@ package database
 
 import (
 	"encoding/json"
+	"errors"
 	"os"
 	"sync"
 )
+
+var ErrNotExist = errors.New("resource does not exist")
 
 type DB struct {
 	path string
@@ -14,70 +17,62 @@ type DB struct {
 type DBStructure struct {
 	Chirps map[int]Chirp `json:"chirps"`
 	Users  map[int]User  `json:"users"`
-	NextID int           `json:"nextId"`
 }
 
 func NewDB(path string) (*DB, error) {
-	db := &DB{path: path, mux: &sync.RWMutex{}}
-	err := db.ensureDB()
-	if err != nil {
-		return nil, err
+	db := &DB{
+		path: path,
+		mux:  &sync.RWMutex{},
 	}
-	return db, nil
+	err := db.ensureDB()
+	return db, err
+}
+
+func (db *DB) createDB() error {
+	dbStructure := DBStructure{
+		Chirps: map[int]Chirp{},
+		Users:  map[int]User{},
+	}
+	return db.writeDB(dbStructure)
 }
 
 func (db *DB) ensureDB() error {
-	if _, err := os.Stat(db.path); os.IsNotExist(err) {
-		file, err := os.Create(db.path)
-		if err != nil {
-			return err
-		}
-		defer file.Close()
-		// Initialize DBStructure with NextID set to 1
-		initialStruct := DBStructure{
-			Chirps: make(map[int]Chirp),
-			Users:  make(map[int]User),
-			NextID: 1,
-		}
-		content, err := json.Marshal(initialStruct)
-		if err != nil {
-			return err
-		}
-		_, err = file.Write(content)
-		return err
+	_, err := os.ReadFile(db.path)
+	if errors.Is(err, os.ErrNotExist) {
+		return db.createDB()
 	}
-	return nil
+	return err
 }
 
 func (db *DB) loadDB() (DBStructure, error) {
-	content, err := os.ReadFile(db.path)
+	db.mux.RLock()
+	defer db.mux.RUnlock()
+
+	dbStructure := DBStructure{}
+	dat, err := os.ReadFile(db.path)
+	if errors.Is(err, os.ErrNotExist) {
+		return dbStructure, err
+	}
+	err = json.Unmarshal(dat, &dbStructure)
 	if err != nil {
-		return DBStructure{}, err
-	}
-	var dbStruct DBStructure
-	err = json.Unmarshal(content, &dbStruct)
-	if err != nil {
-		return DBStructure{}, err
-	}
-	// Ensure the Chirps map is initialized
-	if dbStruct.Chirps == nil {
-		dbStruct.Chirps = make(map[int]Chirp)
-	}
-	if dbStruct.Users == nil {
-		dbStruct.Users = make(map[int]User)
+		return dbStructure, err
 	}
 
-	if dbStruct.NextID == 0 {
-		dbStruct.NextID = 1
-	}
-
-	return dbStruct, nil
+	return dbStructure, nil
 }
 
-func (db *DB) writeDB(dbStruct DBStructure) error {
-	content, err := json.Marshal(dbStruct)
+func (db *DB) writeDB(dbStructure DBStructure) error {
+	db.mux.Lock()
+	defer db.mux.Unlock()
+
+	dat, err := json.Marshal(dbStructure)
 	if err != nil {
 		return err
 	}
-	return os.WriteFile(db.path, content, 0644)
+
+	err = os.WriteFile(db.path, dat, 0600)
+	if err != nil {
+		return err
+	}
+	return nil
 }

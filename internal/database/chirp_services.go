@@ -2,26 +2,24 @@ package database
 
 import (
 	"fmt"
-	"sort"
 )
 
-func (db *DB) CreateChirp(body string) (Chirp, error) {
-	db.mux.Lock()
-	defer db.mux.Unlock()
+// Create chirp without nextID
 
-	dbStruct, err := db.loadDB()
+func (db *DB) CreateChirp(body string) (Chirp, error) {
+	dbStructure, err := db.loadDB()
 	if err != nil {
 		return Chirp{}, err
 	}
 
+	id := len(dbStructure.Chirps) + 1
 	chirp := Chirp{
-		ID:      dbStruct.NextID, // Assign current NextID to chirp
 		Message: body,
+		ID:      id,
 	}
-	dbStruct.Chirps[chirp.ID] = chirp
-	dbStruct.NextID++ // Increment for next chirp
+	dbStructure.Chirps[id] = chirp
 
-	err = db.writeDB(dbStruct)
+	err = db.writeDB(dbStructure)
 	if err != nil {
 		return Chirp{}, err
 	}
@@ -30,32 +28,20 @@ func (db *DB) CreateChirp(body string) (Chirp, error) {
 }
 
 func (db *DB) GetChirps() ([]Chirp, error) {
-	db.mux.RLock()
-	defer db.mux.RUnlock()
-
-	dbStruct, err := db.loadDB()
+	dbStructure, err := db.loadDB()
 	if err != nil {
 		return nil, err
 	}
 
-	var ids []int
-	for id := range dbStruct.Chirps {
-		ids = append(ids, id)
-	}
-	sort.Ints(ids)
-
-	chirps := make([]Chirp, 0, len(dbStruct.Chirps))
-	for _, id := range ids {
-		chirps = append(chirps, dbStruct.Chirps[id])
+	chirps := make([]Chirp, 0, len(dbStructure.Chirps))
+	for _, chirp := range dbStructure.Chirps {
+		chirps = append(chirps, chirp)
 	}
 
 	return chirps, nil
 }
 
 func (db *DB) GetChirpById(id int) (Chirp, error) {
-	db.mux.RLock()
-	defer db.mux.RUnlock()
-
 	dbStruct, err := db.loadDB()
 	if err != nil {
 		return Chirp{}, err

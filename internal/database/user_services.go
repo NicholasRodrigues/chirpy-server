@@ -1,23 +1,19 @@
 package database
 
-import "sort"
+import "fmt"
 
 func (db *DB) CreateUser(email string) (User, error) {
-	db.mux.Lock()
-	defer db.mux.Unlock()
-
 	dbStruct, err := db.loadDB()
 	if err != nil {
 		return User{}, err
 	}
 
+	id := len(dbStruct.Users) + 1
 	user := User{
-		ID:    dbStruct.NextID,
+		ID:    id,
 		Email: email,
 	}
-
-	dbStruct.Users[user.ID] = user
-	dbStruct.NextID++
+	dbStruct.Users[id] = user
 
 	err = db.writeDB(dbStruct)
 	if err != nil {
@@ -27,25 +23,16 @@ func (db *DB) CreateUser(email string) (User, error) {
 	return user, nil
 }
 
-func (db *DB) GetUsers() ([]User, error) {
-	db.mux.RLock()
-	defer db.mux.RUnlock()
-
-	dbStruct, err := db.loadDB()
+func (db *DB) GetUserById(id int) (User, error) {
+	dbStructure, err := db.loadDB()
 	if err != nil {
-		return nil, err
+		return User{}, err
 	}
 
-	var ids []int
-	for id := range dbStruct.Users {
-		ids = append(ids, id)
-	}
-	sort.Ints(ids)
-
-	users := make([]User, 0, len(dbStruct.Users))
-	for _, id := range ids {
-		users = append(users, dbStruct.Users[id])
+	user, ok := dbStructure.Users[id]
+	if !ok {
+		return User{}, fmt.Errorf("chirp not found")
 	}
 
-	return users, nil
+	return user, nil
 }
