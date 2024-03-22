@@ -12,7 +12,8 @@ type User struct {
 
 func (cfg *apiConfig) insertUserHandler(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
-		Email string `json:"email"`
+		Email    string `json:"email"`
+		Password string `json:"password"`
 	}
 	params := parameters{}
 
@@ -21,13 +22,13 @@ func (cfg *apiConfig) insertUserHandler(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	user, err := cfg.DB.CreateUser(params.Email)
+	userResponse, err := cfg.DB.CreateUser(params.Email, params.Password)
 	if err != nil {
 		handleError(w, err, http.StatusInternalServerError, "Error creating user")
 		return
 	}
 
-	sendJSONResponse(w, http.StatusCreated, user)
+	sendJSONResponse(w, http.StatusCreated, userResponse)
 }
 
 func (cfg *apiConfig) getUserHandler(w http.ResponseWriter, r *http.Request) {
@@ -50,4 +51,25 @@ func (cfg *apiConfig) getUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	sendJSONResponse(w, http.StatusOK, user)
+}
+
+func (cfg *apiConfig) loginUserHandler(w http.ResponseWriter, r *http.Request) {
+	type parameters struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	params := parameters{}
+
+	if err := decodeRequestBody(r, &params); err != nil {
+		handleError(w, err, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	userResponse, err := cfg.DB.LoginUser(params.Email, params.Password)
+	if err != nil {
+		handleError(w, err, http.StatusUnauthorized, "Invalid email or password")
+		return
+	}
+
+	sendJSONResponse(w, http.StatusOK, userResponse)
 }

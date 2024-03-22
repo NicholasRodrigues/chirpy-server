@@ -1,8 +1,9 @@
-POST http://localhost:8080/api/chirps
+POST http://localhost:8080/api/users
 Content-Type: application/json
 
 {
-  "body": "I had kerfuffle! something interesting for breakfast"
+  "email": "I had kerfuffle! something interesting for breakfast",
+  "password": "olasounicholas"
 }
 
 ###

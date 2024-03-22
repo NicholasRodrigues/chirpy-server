@@ -32,6 +32,7 @@ func createServer() *http.Server {
 	mux.HandleFunc("GET /api/chirps/{chirpID}", apiConfig.getChirpHandler)
 	mux.HandleFunc("GET /api/users/{userID}", apiConfig.getUserHandler)
 	mux.HandleFunc("POST /api/users", apiConfig.insertUserHandler)
+	mux.HandleFunc("POST /api/login", apiConfig.loginUserHandler)
 
 	mux.HandleFunc("GET /admin/metrics", apiConfig.metricsHandler)
 

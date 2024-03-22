@@ -1,26 +1,38 @@
 package database
 
-import "fmt"
+import (
+	"fmt"
+	"golang.org/x/crypto/bcrypt"
+)
 
-func (db *DB) CreateUser(email string) (User, error) {
+func (db *DB) CreateUser(email, password string) (UserResponse, error) {
 	dbStruct, err := db.loadDB()
 	if err != nil {
-		return User{}, err
+		return UserResponse{}, err
+	}
+
+	encryptedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return UserResponse{}, err
 	}
 
 	id := len(dbStruct.Users) + 1
 	user := User{
-		ID:    id,
-		Email: email,
+		ID:       id,
+		Email:    email,
+		Password: string(encryptedPassword),
 	}
 	dbStruct.Users[id] = user
 
 	err = db.writeDB(dbStruct)
 	if err != nil {
-		return User{}, err
+		return UserResponse{}, err
 	}
 
-	return user, nil
+	return UserResponse{
+		ID:    user.ID,
+		Email: user.Email,
+	}, nil
 }
 
 func (db *DB) GetUserById(id int) (User, error) {
@@ -35,4 +47,27 @@ func (db *DB) GetUserById(id int) (User, error) {
 	}
 
 	return user, nil
+}
+
+func (db *DB) LoginUser(email, password string) (UserResponse, error) {
+	dbStructure, err := db.loadDB()
+	if err != nil {
+		return UserResponse{}, err
+	}
+
+	for _, user := range dbStructure.Users {
+		if user.Email == email {
+			err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
+			if err != nil {
+				return UserResponse{}, fmt.Errorf("invalid password")
+			}
+
+			return UserResponse{
+				ID:    user.ID,
+				Email: user.Email,
+			}, nil
+		}
+	}
+
+	return UserResponse{}, fmt.Errorf("user not found")
 }

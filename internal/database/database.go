@@ -3,6 +3,7 @@ package database
 import (
 	"encoding/json"
 	"errors"
+	"log"
 	"os"
 	"sync"
 )
@@ -33,15 +34,22 @@ func (db *DB) createDB() error {
 		Chirps: map[int]Chirp{},
 		Users:  map[int]User{},
 	}
-	return db.writeDB(dbStructure)
+	err := db.writeDB(dbStructure)
+	if err != nil {
+		log.Printf("Failed to create database file: %v", err) // Ensure you import "log"
+		return err
+	}
+	log.Printf("Database file created successfully at %s", db.path)
+	return nil
 }
 
 func (db *DB) ensureDB() error {
-	_, err := os.ReadFile(db.path)
+	_, err := os.Stat(db.path)
 	if errors.Is(err, os.ErrNotExist) {
 		return db.createDB()
 	}
-	return err
+
+	return nil
 }
 
 func (db *DB) loadDB() (DBStructure, error) {
