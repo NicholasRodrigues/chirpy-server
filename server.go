@@ -22,6 +22,7 @@ func createServer() *http.Server {
 	mux.HandleFunc("POST /api/validate_chirp", apiConfig.validateChirpHandler)
 	mux.HandleFunc("POST /api/chirps", apiConfig.insertChirpHandler)
 	mux.HandleFunc("GET /api/chirps", apiConfig.getChirpsHandler)
+	mux.HandleFunc("/api/chirps/{id}", apiConfig.getChirpHandler)
 
 	mux.HandleFunc("GET /admin/metrics", apiConfig.metricsHandler)
 
