@@ -5,6 +5,7 @@ import (
 	"github.com/NicholasRodrigues/chirpy-server/internal/database"
 	"log"
 	"net/http"
+	"os"
 )
 
 func createServer() *http.Server {
@@ -19,6 +20,7 @@ func createServer() *http.Server {
 	apiConfig := apiConfig{
 		fileserverHits: 0,
 		DB:             db,
+		jwtSecret:      os.Getenv("JWT_SECRET"),
 	}
 
 	fsHandler := apiConfig.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot))))
