@@ -36,6 +36,8 @@ func createServer() *http.Server {
 	mux.HandleFunc("POST /api/users", apiConfig.insertUserHandler)
 	mux.HandleFunc("POST /api/login", apiConfig.loginUserHandler)
 
+	mux.Handle("PUT /api/users", apiConfig.middlewareJWT(http.HandlerFunc(apiConfig.updateUserHandler)))
+
 	mux.HandleFunc("GET /admin/metrics", apiConfig.metricsHandler)
 
 	corsMux := middlewareCors(mux)

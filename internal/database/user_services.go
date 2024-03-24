@@ -30,8 +30,8 @@ func (db *DB) CreateUser(email, password string) (UserResponse, error) {
 	}
 
 	return UserResponse{
-		ID:    user.ID,
 		Email: user.Email,
+		ID:    user.ID,
 	}, nil
 }
 
@@ -49,25 +49,56 @@ func (db *DB) GetUserById(id int) (User, error) {
 	return user, nil
 }
 
-func (db *DB) LoginUser(email, password string) (UserResponse, error) {
+func (db *DB) LoginUser(email, password string) (UserLoginResponse, error) {
 	dbStructure, err := db.loadDB()
 	if err != nil {
-		return UserResponse{}, err
+		return UserLoginResponse{}, err
 	}
 
 	for _, user := range dbStructure.Users {
 		if user.Email == email {
 			err := bcrypt.CompareHashAndPassword([]byte(user.Password), []byte(password))
 			if err != nil {
-				return UserResponse{}, fmt.Errorf("invalid password")
+				return UserLoginResponse{}, fmt.Errorf("invalid password")
 			}
 
-			return UserResponse{
-				ID:    user.ID,
+			return UserLoginResponse{
 				Email: user.Email,
+				ID:    user.ID,
 			}, nil
 		}
 	}
 
-	return UserResponse{}, fmt.Errorf("user not found")
+	return UserLoginResponse{}, fmt.Errorf("user not found")
+}
+
+func (db *DB) UpdateUser(id int, email, password string) (UserResponse, error) {
+	dbStructure, err := db.loadDB()
+	if err != nil {
+		return UserResponse{}, err
+	}
+
+	user, ok := dbStructure.Users[id]
+	if !ok {
+		return UserResponse{}, fmt.Errorf("user not found")
+	}
+
+	encryptedPassword, err := bcrypt.GenerateFromPassword([]byte(password), bcrypt.DefaultCost)
+	if err != nil {
+		return UserResponse{}, err
+	}
+
+	user.Email = email
+	user.Password = string(encryptedPassword)
+	dbStructure.Users[id] = user
+
+	err = db.writeDB(dbStructure)
+	if err != nil {
+		return UserResponse{}, err
+	}
+
+	return UserResponse{
+		Email: user.Email,
+		ID:    user.ID,
+	}, nil
 }

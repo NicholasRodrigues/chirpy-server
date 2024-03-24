@@ -55,8 +55,9 @@ func (cfg *apiConfig) getUserHandler(w http.ResponseWriter, r *http.Request) {
 
 func (cfg *apiConfig) loginUserHandler(w http.ResponseWriter, r *http.Request) {
 	type parameters struct {
-		Email    string `json:"email"`
-		Password string `json:"password"`
+		Email            string `json:"email"`
+		Password         string `json:"password"`
+		ExpiresInSeconds *int64 `json:"expires_in_seconds"`
 	}
 	params := parameters{}
 
@@ -68,6 +69,51 @@ func (cfg *apiConfig) loginUserHandler(w http.ResponseWriter, r *http.Request) {
 	userResponse, err := cfg.DB.LoginUser(params.Email, params.Password)
 	if err != nil {
 		handleError(w, err, http.StatusUnauthorized, "Invalid email or password")
+		return
+	}
+
+	var expires int64
+	if params.ExpiresInSeconds != nil {
+		expires = *params.ExpiresInSeconds
+	} else {
+		expires = 0
+	}
+
+	jwtToken, err := cfg.createJWT(userResponse.ID, expires)
+	if err != nil {
+		handleError(w, err, http.StatusInternalServerError, "Error creating JWT")
+		return
+	}
+
+	userResponse.Token = jwtToken
+
+	sendJSONResponse(w, http.StatusOK, userResponse)
+}
+
+// Update user handler must infer the user ID from the JWT token
+func (cfg *apiConfig) updateUserHandler(w http.ResponseWriter, r *http.Request) {
+	type parameters struct {
+		Email    string `json:"email"`
+		Password string `json:"password"`
+	}
+	params := parameters{}
+
+	if err := decodeRequestBody(r, &params); err != nil {
+		handleError(w, err, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	// Get the user ID from the JWT token
+	ctxUserID := r.Context().Value("userID")
+	userID, err := strconv.Atoi(ctxUserID.(string))
+	if err != nil {
+		handleError(w, err, http.StatusBadRequest, "Invalid user ID")
+		return
+	}
+
+	userResponse, err := cfg.DB.UpdateUser(userID, params.Email, params.Password)
+	if err != nil {
+		handleError(w, err, http.StatusInternalServerError, "Error updating user")
 		return
 	}
 
