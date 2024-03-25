@@ -2,53 +2,80 @@ package main
 
 import (
 	"context"
-	"github.com/golang-jwt/jwt/v5"
+	"fmt"
+	"github.com/NicholasRodrigues/chirpy-server/internal/auth"
 	"net/http"
-	"strconv"
-	"time"
 )
-
-func (cfg *apiConfig) createJWT(userID int, expiresInSeconds int64) (string, error) {
-	if expiresInSeconds == 0 || expiresInSeconds > 86400 {
-		expiresInSeconds = 86400
-	}
-
-	claims := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.RegisteredClaims{
-		Issuer:    "chirpy",
-		IssuedAt:  jwt.NewNumericDate(time.Now()),
-		ExpiresAt: jwt.NewNumericDate(time.Now().Add(time.Duration(expiresInSeconds) * time.Second)),
-		Subject:   strconv.Itoa(userID),
-	})
-
-	token, err := claims.SignedString([]byte(cfg.jwtSecret))
-	if err != nil {
-		return "", err
-	}
-
-	return token, nil
-}
 
 // This function is a middleware that checks for a JWT token in the Authorization header of the request.
 // If the token is valid, the request is passed to the next handler. If the token is invalid, the middleware
 // returns a 401 Unauthorized response.
 func (cfg *apiConfig) middlewareJWT(next http.Handler) http.HandlerFunc {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		authorizationHeader := r.Header.Get("Authorization")
-		if authorizationHeader == "" {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+	return func(w http.ResponseWriter, r *http.Request) {
+		tokenString, err := auth.GetBearerToken(r.Header)
+
+		if tokenString == "" {
+			http.Error(w, "Unauthorized: No token provided", http.StatusUnauthorized)
 			return
 		}
 
-		tokenString := authorizationHeader[7:]
-		claims := jwt.RegisteredClaims{}
-		_, err := jwt.ParseWithClaims(tokenString, &claims, func(token *jwt.Token) (interface{}, error) {
-			return []byte(cfg.jwtSecret), nil
-		})
+		// Parse the token
+		userId, err := auth.ValidateJWT(tokenString, cfg.jwtSecret)
+
 		if err != nil {
-			http.Error(w, "Unauthorized", http.StatusUnauthorized)
+			fmt.Println("Error parsing token: ", err)
+			http.Error(w, "Unauthorized 2", http.StatusUnauthorized)
 			return
 		}
-		ctx := context.WithValue(r.Context(), "userID", claims.Subject)
+
+		// The token is valid and is an access token, continue processing the request
+		ctx := context.WithValue(r.Context(), "userID", userId)
 		next.ServeHTTP(w, r.WithContext(ctx))
-	})
+	}
+}
+
+func (cfg *apiConfig) refreshHandler(w http.ResponseWriter, r *http.Request) {
+	type response struct {
+		Token string `json:"token"`
+	}
+
+	refreshToken, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		handleError(w, err, http.StatusBadRequest, "Invalid token")
+		return
+	}
+
+	isRevoked, err := cfg.DB.IsTokenRevoked(refreshToken)
+	if err != nil {
+		handleError(w, err, http.StatusInternalServerError, "Error checking token")
+		return
+	}
+	if isRevoked {
+		handleError(w, err, http.StatusUnauthorized, "Token revoked")
+		return
+	}
+
+	accessToken, err := auth.RefreshToken(refreshToken, cfg.jwtSecret)
+	if err != nil {
+		handleError(w, err, http.StatusInternalServerError, "Error refreshing token")
+		return
+	}
+
+	sendJSONResponse(w, http.StatusOK, response{Token: accessToken})
+}
+
+func (cfg *apiConfig) revokeHandler(w http.ResponseWriter, r *http.Request) {
+	refreshToken, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		handleError(w, err, http.StatusBadRequest, "Invalid token")
+		return
+	}
+
+	err = cfg.DB.RevokeToken(refreshToken)
+	if err != nil {
+		handleError(w, err, http.StatusInternalServerError, "Error revoking token")
+		return
+	}
+
+	sendJSONResponse(w, http.StatusOK, nil)
 }

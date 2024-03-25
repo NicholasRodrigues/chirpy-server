@@ -36,7 +36,11 @@ func createServer() *http.Server {
 	mux.HandleFunc("POST /api/users", apiConfig.insertUserHandler)
 	mux.HandleFunc("POST /api/login", apiConfig.loginUserHandler)
 
-	mux.Handle("PUT /api/users", apiConfig.middlewareJWT(http.HandlerFunc(apiConfig.updateUserHandler)))
+	//mux.Handle("PUT /api/users", apiConfig.middlewareJWT(http.HandlerFunc(apiConfig.updateUserHandler)))
+	mux.HandleFunc("PUT /api/users", apiConfig.updateUserHandler)
+
+	mux.HandleFunc("POST /api/refresh", apiConfig.refreshHandler)
+	mux.HandleFunc("POST /api/revoke", apiConfig.revokeHandler)
 
 	mux.HandleFunc("GET /admin/metrics", apiConfig.metricsHandler)
 
