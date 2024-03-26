@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"github.com/NicholasRodrigues/chirpy-server/internal/auth"
 	"net/http"
 	"sort"
 	"strconv"
@@ -9,14 +10,30 @@ import (
 )
 
 type Chirp struct {
-	Message string `json:"body"`
-	ID      int    `json:"id"`
+	AuthorId int    `json:"author_id"`
+	Message  string `json:"body"`
+	ID       int    `json:"id"`
 }
 
 func (cfg *apiConfig) insertChirpHandler(w http.ResponseWriter, r *http.Request) {
-	var chirp Chirp
+	type parameters struct {
+		Message string `json:"body"`
+	}
+	chirp := parameters{}
 	if err := decodeRequestBody(r, &chirp); err != nil {
 		handleError(w, err, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	token, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		handleError(w, err, http.StatusBadRequest, "Invalid token")
+		return
+	}
+
+	subject, err := auth.ValidateJWT(token, cfg.jwtSecret)
+	if err != nil {
+		handleError(w, err, http.StatusUnauthorized, "Invalid token")
 		return
 	}
 
@@ -26,7 +43,7 @@ func (cfg *apiConfig) insertChirpHandler(w http.ResponseWriter, r *http.Request)
 		return
 	}
 
-	dbChirp, err := cfg.DB.CreateChirp(cleanedBody)
+	dbChirp, err := cfg.DB.CreateChirp(cleanedBody, subject)
 	if err != nil {
 		handleError(w, err, http.StatusInternalServerError, "Error creating chirp")
 		return
@@ -77,8 +94,9 @@ func (cfg *apiConfig) getChirpHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	chirp := Chirp{
-		ID:      dbChirp.ID,
-		Message: dbChirp.Message,
+		AuthorId: dbChirp.AuthorId,
+		ID:       dbChirp.ID,
+		Message:  dbChirp.Message,
 	}
 
 	sendJSONResponse(w, http.StatusOK, chirp)
@@ -94,8 +112,9 @@ func (cfg *apiConfig) getChirpsHandler(w http.ResponseWriter, r *http.Request) {
 	chirps := []Chirp{}
 	for _, dbChirp := range dbChirps {
 		chirps = append(chirps, Chirp{
-			ID:      dbChirp.ID,
-			Message: dbChirp.Message,
+			AuthorId: dbChirp.AuthorId,
+			ID:       dbChirp.ID,
+			Message:  dbChirp.Message,
 		})
 	}
 

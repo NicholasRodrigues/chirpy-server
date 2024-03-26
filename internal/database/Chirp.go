@@ -1,6 +1,7 @@
 package database
 
 type Chirp struct {
-	Message string `json:"body"`
-	ID      int    `json:"id"`
+	AuthorId int    `json:"author_id"`
+	Message  string `json:"body"`
+	ID       int    `json:"id"`
 }

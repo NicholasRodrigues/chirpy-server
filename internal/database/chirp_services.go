@@ -2,20 +2,27 @@ package database
 
 import (
 	"fmt"
+	"strconv"
 )
 
 // Create chirp without nextID
 
-func (db *DB) CreateChirp(body string) (Chirp, error) {
+func (db *DB) CreateChirp(body string, authorId string) (Chirp, error) {
 	dbStructure, err := db.loadDB()
+	if err != nil {
+		return Chirp{}, err
+	}
+
+	intAuthorId, err := strconv.Atoi(authorId)
 	if err != nil {
 		return Chirp{}, err
 	}
 
 	id := len(dbStructure.Chirps) + 1
 	chirp := Chirp{
-		Message: body,
-		ID:      id,
+		AuthorId: intAuthorId,
+		Message:  body,
+		ID:       id,
 	}
 	dbStructure.Chirps[id] = chirp
 
