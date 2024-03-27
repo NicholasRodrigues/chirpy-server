@@ -188,6 +188,18 @@ func (cfg *apiConfig) polkaWebHookHandler(w http.ResponseWriter, r *http.Request
 		} `json:"data"`
 		Event string `json:"event"`
 	}
+
+	requestApiKey, err := auth.GetApiKey(r.Header)
+	if err != nil {
+		handleError(w, err, http.StatusUnauthorized, "Invalid API key")
+		return
+	}
+
+	if requestApiKey != cfg.polkaApiKey {
+		handleError(w, nil, http.StatusUnauthorized, "Invalid API key")
+		return
+	}
+
 	params := parameters{}
 
 	if err := decodeRequestBody(r, &params); err != nil {
@@ -203,7 +215,7 @@ func (cfg *apiConfig) polkaWebHookHandler(w http.ResponseWriter, r *http.Request
 	}
 
 	userID := params.Data.UserID
-	err := cfg.DB.UpdateUserChirpyRed(userID)
+	err = cfg.DB.UpdateUserChirpyRed(userID)
 	if err != nil {
 		fmt.Println("Error updating user: ", err)
 		handleError(w, err, http.StatusInternalServerError, "Error updating user")
