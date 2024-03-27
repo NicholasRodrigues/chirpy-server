@@ -28,10 +28,13 @@ func createServer() *http.Server {
 
 	mux.HandleFunc("GET /api/healthz", readinessHandler)
 	mux.HandleFunc("GET /api/reset", apiConfig.resetHandler)
+
 	mux.HandleFunc("POST /api/validate_chirp", apiConfig.validateChirpHandler)
 	mux.HandleFunc("POST /api/chirps", apiConfig.insertChirpHandler)
 	mux.HandleFunc("GET /api/chirps", apiConfig.getChirpsHandler)
 	mux.HandleFunc("GET /api/chirps/{chirpID}", apiConfig.getChirpHandler)
+	mux.HandleFunc("DELETE /api/chirps/{chirpID}", apiConfig.deleteChirpHandler)
+
 	mux.HandleFunc("GET /api/users/{userID}", apiConfig.getUserHandler)
 	mux.HandleFunc("POST /api/users", apiConfig.insertUserHandler)
 	mux.HandleFunc("POST /api/login", apiConfig.loginUserHandler)
