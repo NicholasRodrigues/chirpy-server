@@ -1,0 +1,9 @@
+POST http://localhost:8080/api/polka/webhooks
+Content-Type: application/json
+
+{
+  "data": {
+    "user_id": 1
+  },
+  "event": "user.upgraded"
+}

@@ -18,9 +18,10 @@ func (db *DB) CreateUser(email, password string) (UserResponse, error) {
 
 	id := len(dbStruct.Users) + 1
 	user := User{
-		ID:       id,
-		Email:    email,
-		Password: string(encryptedPassword),
+		ID:          id,
+		Email:       email,
+		Password:    string(encryptedPassword),
+		IsChirpyRed: false,
 	}
 	dbStruct.Users[id] = user
 
@@ -30,8 +31,9 @@ func (db *DB) CreateUser(email, password string) (UserResponse, error) {
 	}
 
 	return UserResponse{
-		Email: user.Email,
-		ID:    user.ID,
+		Email:       user.Email,
+		ID:          user.ID,
+		IsChirpyRed: user.IsChirpyRed,
 	}, nil
 }
 
@@ -63,8 +65,9 @@ func (db *DB) LoginUser(email, password string) (UserLoginResponse, error) {
 			}
 
 			return UserLoginResponse{
-				Email: user.Email,
-				ID:    user.ID,
+				Email:       user.Email,
+				ID:          user.ID,
+				IsChirpyRed: user.IsChirpyRed,
 			}, nil
 		}
 	}
@@ -98,7 +101,30 @@ func (db *DB) UpdateUser(id int, email, password string) (UserResponse, error) {
 	}
 
 	return UserResponse{
-		Email: user.Email,
-		ID:    user.ID,
+		Email:       user.Email,
+		ID:          user.ID,
+		IsChirpyRed: user.IsChirpyRed,
 	}, nil
+}
+
+func (db *DB) UpdateUserChirpyRed(id int) error {
+	dbStructure, err := db.loadDB()
+	if err != nil {
+		return err
+	}
+
+	user, ok := dbStructure.Users[id]
+	if !ok {
+		return fmt.Errorf("user not found")
+	}
+
+	user.IsChirpyRed = true
+	dbStructure.Users[id] = user
+
+	err = db.writeDB(dbStructure)
+	if err != nil {
+		return err
+	}
+
+	return nil
 }

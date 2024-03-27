@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/json"
+	"fmt"
 	"github.com/NicholasRodrigues/chirpy-server/internal/auth"
 	"net/http"
 	"strconv"
@@ -9,8 +10,9 @@ import (
 )
 
 type User struct {
-	Email string `json:"email"`
-	ID    int    `json:"id"`
+	Email       string `json:"email"`
+	ID          int    `json:"id"`
+	IsChirpyRed bool   `json:"is_chirpy_red"`
 }
 
 func (cfg *apiConfig) insertUserHandler(w http.ResponseWriter, r *http.Request) {
@@ -49,8 +51,9 @@ func (cfg *apiConfig) getUserHandler(w http.ResponseWriter, r *http.Request) {
 	}
 
 	user := User{
-		ID:    dbUser.ID,
-		Email: dbUser.Email,
+		ID:          dbUser.ID,
+		Email:       dbUser.Email,
+		IsChirpyRed: dbUser.IsChirpyRed,
 	}
 
 	sendJSONResponse(w, http.StatusOK, user)
@@ -176,4 +179,36 @@ func (cfg *apiConfig) updateUserHandler(w http.ResponseWriter, r *http.Request) 
 
 	sendJSONResponse(w, http.StatusOK, response{User: User{Email: user.Email, ID: user.ID}})
 
+}
+
+func (cfg *apiConfig) polkaWebHookHandler(w http.ResponseWriter, r *http.Request) {
+	type parameters struct {
+		Data struct {
+			UserID int `json:"user_id"`
+		} `json:"data"`
+		Event string `json:"event"`
+	}
+	params := parameters{}
+
+	if err := decodeRequestBody(r, &params); err != nil {
+		fmt.Println("Error decoding request body: ", err)
+		handleError(w, err, http.StatusBadRequest, "Invalid request body")
+		return
+	}
+
+	if params.Event != "user.upgraded" {
+		fmt.Println("Invalid event type")
+		w.WriteHeader(http.StatusOK)
+		return
+	}
+
+	userID := params.Data.UserID
+	err := cfg.DB.UpdateUserChirpyRed(userID)
+	if err != nil {
+		fmt.Println("Error updating user: ", err)
+		handleError(w, err, http.StatusInternalServerError, "Error updating user")
+		return
+	}
+
+	sendJSONResponse(w, http.StatusOK, nil)
 }

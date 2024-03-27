@@ -21,6 +21,7 @@ func createServer() *http.Server {
 		fileserverHits: 0,
 		DB:             db,
 		jwtSecret:      os.Getenv("JWT_SECRET"),
+		polkaApiKey:    os.Getenv("POLKA_KEY"),
 	}
 
 	fsHandler := apiConfig.middlewareMetricsInc(http.StripPrefix("/app", http.FileServer(http.Dir(filepathRoot))))
@@ -46,6 +47,8 @@ func createServer() *http.Server {
 	mux.HandleFunc("POST /api/revoke", apiConfig.revokeHandler)
 
 	mux.HandleFunc("GET /admin/metrics", apiConfig.metricsHandler)
+
+	mux.HandleFunc("POST /api/polka/webhooks", apiConfig.polkaWebHookHandler)
 
 	corsMux := middlewareCors(mux)
 
