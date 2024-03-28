@@ -2,6 +2,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"github.com/NicholasRodrigues/chirpy-server/internal/auth"
 	"net/http"
 	"sort"
@@ -104,6 +105,10 @@ func (cfg *apiConfig) getChirpHandler(w http.ResponseWriter, r *http.Request) {
 
 func (cfg *apiConfig) getChirpsHandler(w http.ResponseWriter, r *http.Request) {
 	authorIDParam := r.URL.Query().Get("author_id")
+	sortParam := r.URL.Query().Get("sort")
+
+	fmt.Println("authorIDParam: ", authorIDParam)
+	fmt.Println("sortParam: ", sortParam)
 
 	if authorIDParam != "" {
 		authorID, err := strconv.Atoi(authorIDParam)
@@ -150,9 +155,15 @@ func (cfg *apiConfig) getChirpsHandler(w http.ResponseWriter, r *http.Request) {
 		})
 	}
 
-	sort.Slice(chirps, func(i, j int) bool {
-		return chirps[i].ID < chirps[j].ID
-	})
+	if sortParam == "asc" {
+		sort.Slice(chirps, func(i, j int) bool {
+			return chirps[i].ID < chirps[j].ID
+		})
+	} else if sortParam == "desc" {
+		sort.Slice(chirps, func(i, j int) bool {
+			return chirps[i].ID > chirps[j].ID
+		})
+	}
 
 	sendJSONResponse(w, http.StatusOK, chirps)
 }
